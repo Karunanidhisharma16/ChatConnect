@@ -1,14 +1,32 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Loginpage from './pages/Loginpage';
+import Signup from './pages/Signup';
+import Chatpage from './pages/Chatpage';
+import ProtectedRoute from './utils/ProtectedRoute';
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <h1 className="text-4xl font-bold text-center pt-20">
-        ChatConnect
-      </h1>
-      <p className="text-center text-gray-400 mt-4">
-        Welcome to ChatConnect - Your modern messaging platform
-      </p>
-    </div>
-  )
+    <BrowserRouter>
+      <Routes>
+        {/* Public Routes */}
+        <Route path="/login" element={<Loginpage />} />
+        <Route path="/signup" element={<Signup />} />
+        
+        {/* Protected Routes */}
+        <Route 
+          path="/chat" 
+          element={
+            <ProtectedRoute>
+              <Chatpage />
+            </ProtectedRoute>
+          } 
+        />
+        
+        {/* Default Route */}
+        <Route path="/" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
