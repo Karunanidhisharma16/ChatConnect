@@ -1,16 +1,57 @@
+// Chatpage.jsx - Main chat interface with real-time messaging using Socket.IO
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userAPI, authAPI } from '../services/api';
+import { userAPI, authAPI, messageAPI } from '../services/api';
+import { socket, connectSocket, disconnectSocket, sendMessage } from '../services/socket';
 
 function Chatpage() {
   const [users, setUsers] = useState([]);
   const [selectedUser, setSelectedUser] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [currentUserId, setCurrentUserId] = useState(null);
   const navigate = useNavigate();
   
   useEffect(() => {
+    const userId = localStorage.getItem('userId');
+    if (!userId) {
+      const storedToken = localStorage.getItem('token');
+      if (storedToken) {
+        const payload = JSON.parse(atob(storedToken.split('.')[1]));
+        localStorage.setItem('userId', payload.userId);
+        setCurrentUserId(payload.userId);
+        connectSocket(payload.userId);
+      }
+    } else {
+      setCurrentUserId(userId);
+      connectSocket(userId);
+    }
+    
     fetchUsers();
+    
+    socket.on('receive-message', (message) => {
+      setMessages(prev => [...prev, message]);
+    });
+    
+    socket.on('user-status', ({ userId, isOnline }) => {
+      setUsers(prev => prev.map(user => 
+        user._id === userId ? { ...user, isOnline } : user
+      ));
+    });
+    
+    return () => {
+      disconnectSocket();
+      socket.off('receive-message');
+      socket.off('user-status');
+    };
   }, []);
+  
+  useEffect(() => {
+    if (selectedUser) {
+      fetchMessages(selectedUser._id);
+    }
+  }, [selectedUser]);
   
   const fetchUsers = async () => {
     try {
@@ -26,13 +67,49 @@ function Chatpage() {
     }
   };
   
+  const fetchMessages = async (userId) => {
+    try {
+      const response = await messageAPI.getMessages(userId);
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+  
+  const handleSendMessage = async (e) => {
+    e.preventDefault();
+    if (!newMessage.trim() || !selectedUser) return;
+    
+    const messageData = {
+      senderId: currentUserId,
+      receiverId: selectedUser._id,
+      content: newMessage,
+      timestamp: new Date()
+    };
+    
+    try {
+      await messageAPI.sendMessage({
+        receiverId: selectedUser._id,
+        content: newMessage
+      });
+      
+      setMessages(prev => [...prev, messageData]);
+      sendMessage(currentUserId, selectedUser._id, newMessage);
+      setNewMessage('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+    }
+  };
+  
   const handleLogout = async () => {
     try {
       await authAPI.logout();
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
+      disconnectSocket();
       localStorage.removeItem('token');
+      localStorage.removeItem('userId');
       navigate('/login');
     }
   };
@@ -49,13 +126,6 @@ function Chatpage() {
             >
               Logout
             </button>
-          </div>
-          <div className="relative">
-            <input
-              type="text"
-              placeholder="Search users..."
-              className="w-full px-4 py-2 bg-gray-700 text-white rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder-gray-400"
-            />
           </div>
         </div>
         
@@ -89,9 +159,7 @@ function Chatpage() {
                 </div>
                 
                 <div className="ml-3 flex-1">
-                  <div className="flex items-center justify-between">
-                    <p className="font-semibold text-white">{user.username}</p>
-                  </div>
+                  <p className="font-semibold text-white">{user.username}</p>
                   <p className="text-sm text-gray-400">
                     {user.isOnline ? 'Active now' : 'Offline'}
                   </p>
@@ -123,33 +191,49 @@ function Chatpage() {
             </div>
             
             <div className="flex-1 p-6 overflow-y-auto bg-gray-900">
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <div className="w-20 h-20 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
-                    {selectedUser.username.charAt(0).toUpperCase()}
+              {messages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center text-gray-400">
+                    <p>No messages yet. Start the conversation!</p>
                   </div>
-                  <p className="text-xl font-semibold text-white mb-2">{selectedUser.username}</p>
-                  <p className="text-gray-400 text-sm">Send a message to start chatting</p>
                 </div>
-              </div>
+              ) : (
+                <div className="space-y-4">
+                  {messages.map((msg, idx) => (
+                    <div
+                      key={idx}
+                      className={`flex ${msg.sender === currentUserId || msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
+                        msg.sender === currentUserId || msg.senderId === currentUserId
+                          ? 'bg-blue-600 text-white rounded-br-none'
+                          : 'bg-gray-700 text-white rounded-bl-none'
+                      }`}>
+                        <p className="break-words">{msg.content}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             
-            <div className="p-4 bg-gray-800 border-t border-gray-700">
+            <form onSubmit={handleSendMessage} className="p-4 bg-gray-800 border-t border-gray-700">
               <div className="flex items-center space-x-2">
                 <input
                   type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
                   className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled
                 />
                 <button
-                  disabled
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl font-semibold opacity-50 cursor-not-allowed"
+                  type="submit"
+                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition"
                 >
                   Send
                 </button>
               </div>
-            </div>
+            </form>
           </>
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-900">
