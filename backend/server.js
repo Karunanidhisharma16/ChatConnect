@@ -24,9 +24,10 @@ connectDB();
 
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/users');
-
+const messageRoutes = require('./routes/messages');
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/messages', messageRoutes);
 
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });

@@ -50,7 +50,7 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
 
     try {
-
+            console.log('Login attempt:', req.body);
         const { email, password } = req.body;
 
         //find user by email
@@ -75,7 +75,7 @@ exports.login = async (req, res) => {
 
         const token = jwt.sign(
             { userId: user._id },
-            proocess.env.JWT_SECRET,
+            process.env.JWT_SECRET,
             { expiresIn: '7d' }
         );
 
