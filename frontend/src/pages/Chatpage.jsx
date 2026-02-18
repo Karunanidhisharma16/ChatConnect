@@ -1,8 +1,9 @@
 // Chatpage.jsx - Main chat interface with real-time messaging using Socket.IO
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { userAPI, authAPI, messageAPI } from '../services/api';
 import { socket, connectSocket, disconnectSocket, sendMessage } from '../services/socket';
+import { motion, AnimatePresence } from 'framer-motion';
 
 function Chatpage() {
   const [users, setUsers] = useState([]);
@@ -11,8 +12,9 @@ function Chatpage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+  const messagesEndRef = useRef(null);
   const navigate = useNavigate();
-  
+
   useEffect(() => {
     const userId = localStorage.getItem('userId');
     if (!userId) {
@@ -27,32 +29,36 @@ function Chatpage() {
       setCurrentUserId(userId);
       connectSocket(userId);
     }
-    
+
     fetchUsers();
-    
+
     socket.on('receive-message', (message) => {
       setMessages(prev => [...prev, message]);
     });
-    
+
     socket.on('user-status', ({ userId, isOnline }) => {
-      setUsers(prev => prev.map(user => 
+      setUsers(prev => prev.map(user =>
         user._id === userId ? { ...user, isOnline } : user
       ));
     });
-    
+
     return () => {
       disconnectSocket();
       socket.off('receive-message');
       socket.off('user-status');
     };
   }, []);
-  
+
   useEffect(() => {
     if (selectedUser) {
       fetchMessages(selectedUser._id);
     }
   }, [selectedUser]);
-  
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const fetchUsers = async () => {
     try {
       const response = await userAPI.getAllUsers();
@@ -66,7 +72,7 @@ function Chatpage() {
       setLoading(false);
     }
   };
-  
+
   const fetchMessages = async (userId) => {
     try {
       const response = await messageAPI.getMessages(userId);
@@ -75,24 +81,24 @@ function Chatpage() {
       console.error('Error fetching messages:', error);
     }
   };
-  
+
   const handleSendMessage = async (e) => {
     e.preventDefault();
     if (!newMessage.trim() || !selectedUser) return;
-    
+
     const messageData = {
       senderId: currentUserId,
       receiverId: selectedUser._id,
       content: newMessage,
       timestamp: new Date()
     };
-    
+
     try {
       await messageAPI.sendMessage({
         receiverId: selectedUser._id,
         content: newMessage
       });
-      
+
       setMessages(prev => [...prev, messageData]);
       sendMessage(currentUserId, selectedUser._id, newMessage);
       setNewMessage('');
@@ -100,7 +106,7 @@ function Chatpage() {
       console.error('Error sending message:', error);
     }
   };
-  
+
   const handleLogout = async () => {
     try {
       await authAPI.logout();
@@ -115,137 +121,182 @@ function Chatpage() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-900">
-      <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
-        <div className="p-4 bg-gray-900 border-b border-gray-700">
-          <div className="flex items-center justify-between mb-4">
-            <h1 className="text-2xl font-bold text-white">Chats</h1>
+    <div className="flex h-screen bg-background text-foreground overflow-hidden">
+
+      {/* BACKGROUND ELEMENTS */}
+      <div className="absolute inset-0 pointer-events-none z-0">
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-[100px]" />
+        <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-[100px]" />
+      </div>
+
+      {/* SIDEBAR */}
+      <div className="w-80 border-r border-border bg-slate-900/40 backdrop-blur-xl flex flex-col z-10">
+        <div className="p-6 border-b border-border/40">
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+              Messages
+            </h1>
             <button
               onClick={handleLogout}
-              className="px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm rounded-lg transition border border-red-500/20"
+              className="text-xs text-muted-foreground hover:text-red-400 transition-colors uppercase tracking-wide font-medium"
             >
               Logout
             </button>
           </div>
         </div>
-        
-        <div className="flex-1 overflow-y-auto">
+
+        <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
           {loading ? (
             <div className="flex items-center justify-center h-32">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-gray-500">
+            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm">
               <p>No users found</p>
             </div>
           ) : (
             users.map((user) => (
-              <div
+              <motion.div
                 key={user._id}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 onClick={() => setSelectedUser(user)}
-                className={`flex items-center p-4 cursor-pointer transition border-b border-gray-700/50 ${
-                  selectedUser?._id === user._id
-                    ? 'bg-gray-700/50'
-                    : 'hover:bg-gray-700/30'
-                }`}
+                className={`p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-4 ${selectedUser?._id === user._id
+                    ? 'bg-primary/15 border border-primary/20 shadow-sm'
+                    : 'hover:bg-white/5 border border-transparent'
+                  }`}
               >
                 <div className="relative">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-lg">
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner ${selectedUser?._id === user._id ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-slate-700'
+                    }`}>
                     {user.username.charAt(0).toUpperCase()}
                   </div>
-                  <div className={`absolute bottom-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-gray-800 ${
-                    user.isOnline ? 'bg-green-500' : 'bg-gray-500'
-                  }`}></div>
+                  {user.isOnline && (
+                    <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+                  )}
                 </div>
-                
-                <div className="ml-3 flex-1">
-                  <p className="font-semibold text-white">{user.username}</p>
-                  <p className="text-sm text-gray-400">
-                    {user.isOnline ? 'Active now' : 'Offline'}
+
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium truncate ${selectedUser?._id === user._id ? 'text-white' : 'text-slate-200'}`}>
+                    {user.username}
+                  </p>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {user.isOnline ? 'Online' : 'Offline'}
                   </p>
                 </div>
-              </div>
+              </motion.div>
             ))
           )}
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col">
+      {/* CHAT AREA */}
+      <div className="flex-1 flex flex-col z-10 relative">
         {selectedUser ? (
           <>
-            <div className="p-4 bg-gray-800 border-b border-gray-700 flex items-center">
-              <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                  {selectedUser.username.charAt(0).toUpperCase()}
+            {/* CHAT HEADER */}
+            <div className="h-20 px-6 border-b border-border/40 bg-slate-900/40 backdrop-blur-xl flex items-center justify-between shadow-sm">
+              <div className="flex items-center gap-4">
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    {selectedUser.username.charAt(0).toUpperCase()}
+                  </div>
+                  {selectedUser.isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full"></div>
+                  )}
                 </div>
-                <div className={`absolute bottom-0 right-0 w-3 h-3 rounded-full border-2 border-gray-800 ${
-                  selectedUser.isOnline ? 'bg-green-500' : 'bg-gray-500'
-                }`}></div>
-              </div>
-              <div className="ml-3">
-                <p className="font-semibold text-white">{selectedUser.username}</p>
-                <p className="text-xs text-gray-400">
-                  {selectedUser.isOnline ? 'Active now' : 'Offline'}
-                </p>
+                <div>
+                  <h2 className="font-semibold text-lg text-white">{selectedUser.username}</h2>
+                  <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <span className={`w-1.5 h-1.5 rounded-full ${selectedUser.isOnline ? 'bg-green-500' : 'bg-slate-500'}`}></span>
+                    {selectedUser.isOnline ? 'Active now' : 'Offline'}
+                  </p>
+                </div>
               </div>
             </div>
-            
-            <div className="flex-1 p-6 overflow-y-auto bg-gray-900">
+
+            {/* MESSAGES LIST */}
+            <div className="flex-1 overflow-y-auto p-6 space-y-6 bg-transparent">
               {messages.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center text-gray-400">
-                    <p>No messages yet. Start the conversation!</p>
+                <div className="flex flex-col items-center justify-center h-full text-center space-y-4 opacity-70">
+                  <div className="w-20 h-20 bg-slate-800/50 rounded-full flex items-center justify-center">
+                    <svg className="w-10 h-10 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-white">No messages yet</h3>
+                    <p className="text-muted-foreground text-sm">Say hello to start the conversation!</p>
                   </div>
                 </div>
               ) : (
-                <div className="space-y-4">
-                  {messages.map((msg, idx) => (
-                    <div
+                messages.map((msg, idx) => {
+                  const isMe = msg.sender === currentUserId || msg.senderId === currentUserId;
+                  return (
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3 }}
                       key={idx}
-                      className={`flex ${msg.sender === currentUserId || msg.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
+                      className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                     >
-                      <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-                        msg.sender === currentUserId || msg.senderId === currentUserId
-                          ? 'bg-blue-600 text-white rounded-br-none'
-                          : 'bg-gray-700 text-white rounded-bl-none'
-                      }`}>
-                        <p className="break-words">{msg.content}</p>
+                      <div className={`max-w-[70%] px-5 py-3 rounded-2xl shadow-md backdrop-blur-sm ${isMe
+                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
+                          : 'bg-slate-800/80 border border-slate-700/50 text-slate-100 rounded-bl-sm'
+                        }`}>
+                        <p className="leading-relaxed text-[15px]">{msg.content}</p>
+                        <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
+                          {new Date(msg.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    </motion.div>
+                  );
+                })
               )}
+              <div ref={messagesEndRef} />
             </div>
-            
-            <form onSubmit={handleSendMessage} className="p-4 bg-gray-800 border-t border-gray-700">
-              <div className="flex items-center space-x-2">
+
+            {/* INPUT AREA */}
+            <div className="p-4 bg-slate-900/40 backdrop-blur-xl border-t border-border/40">
+              <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto relative flex items-center gap-3">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   placeholder="Type a message..."
-                  className="flex-1 px-4 py-3 bg-gray-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full glass-input px-6 py-4 rounded-full text-white placeholder:text-muted-foreground/60 focus:outline-none pr-14"
                 />
                 <button
                   type="submit"
-                  className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold transition"
+                  disabled={!newMessage.trim()}
+                  className="absolute right-2 p-2.5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full text-white shadow-lg hover:shadow-blue-500/25 disabled:opacity-50 disabled:cursor-not-allowed transition-all hover:scale-105 active:scale-95"
                 >
-                  Send
+                  <svg className="w-5 h-5 rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
+                  </svg>
                 </button>
-              </div>
-            </form>
+              </form>
+            </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center bg-gray-900">
-            <div className="text-center">
-              <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+          <div className="flex-1 flex flex-col items-center justify-center bg-slate-950/50">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ duration: 0.5 }}
+              className="text-center"
+            >
+              <div className="w-32 h-32 bg-gradient-to-br from-blue-500/20 to-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-8 relative">
+                <div className="absolute inset-0 bg-blue-500/10 rounded-full blur-2xl animate-pulse"></div>
+                <svg className="w-16 h-16 text-indigo-400 relative z-10" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">ChatConnect</h2>
-              <p className="text-gray-400">Select a user to start messaging</p>
-            </div>
+              <h1 className="text-4xl font-bold text-white mb-3">Welcome to ChatConnect</h1>
+              <p className="text-muted-foreground text-lg max-w-md mx-auto">
+                Select a conversation from the sidebar to start messaging instantly.
+              </p>
+            </motion.div>
           </div>
         )}
       </div>
