@@ -62,7 +62,7 @@ function Loginpage() {
           >
             <div className="space-y-4">
               <h1 className="text-7xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
-                ChatConnect
+                ConvoShare
               </h1>
               <p className="text-xl text-muted-foreground leading-relaxed max-w-md">
                 Experience the next generation of messaging. Real-time, secure, and beautifully designed for improved productivity.
