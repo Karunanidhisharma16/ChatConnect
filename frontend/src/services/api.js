@@ -27,6 +27,9 @@ export const authAPI = {
 
 export const userAPI = {
   getAllUsers: () => api.get('/users'),
+  getContacts: () => api.get('/users/contacts'),
+  searchUser: (username) => api.get(`/users/search?username=${username}`),
+  addContact: (id) => api.post(`/users/add-contact/${id}`),
   getUserById: (id) => api.get(`/users/${id}`)
 };
 

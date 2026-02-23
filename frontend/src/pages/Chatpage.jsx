@@ -12,6 +12,13 @@ function Chatpage() {
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
   const [currentUserId, setCurrentUserId] = useState(null);
+
+  // Search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResult, setSearchResult] = useState(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState('');
+
   const messagesEndRef = useRef(null);
   const navigate = useNavigate();
 
@@ -30,7 +37,7 @@ function Chatpage() {
       connectSocket(userId);
     }
 
-    fetchUsers();
+    fetchContacts();
 
     socket.on('receive-message', (message) => {
       setMessages(prev => [...prev, message]);
@@ -59,17 +66,52 @@ function Chatpage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const fetchUsers = async () => {
+  const fetchContacts = async () => {
     try {
-      const response = await userAPI.getAllUsers();
+      setLoading(true);
+      const response = await userAPI.getContacts();
       setUsers(response.data);
     } catch (error) {
-      console.error('Error fetching users:', error);
+      console.error('Error fetching contacts:', error);
       if (error.response?.status === 401) {
         handleLogout();
       }
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    setSearchError('');
+    setSearchResult(null);
+
+    try {
+      const response = await userAPI.searchUser(searchQuery.trim());
+      setSearchResult(response.data);
+    } catch (error) {
+      if (error.response?.status === 404) {
+        setSearchError('User not found');
+      } else {
+        setSearchError('Error searching user');
+      }
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  const handleAddContact = async (userId) => {
+    try {
+      await userAPI.addContact(userId);
+      setSearchQuery('');
+      setSearchResult(null);
+      fetchContacts(); // Refresh contacts list
+    } catch (error) {
+      console.error('Error adding contact:', error);
+      alert(error.response?.data?.message || 'Error adding contact');
     }
   };
 
@@ -145,47 +187,116 @@ function Chatpage() {
           </div>
         </div>
 
+        {/* SEARCH BAR */}
+        <div className="p-4 border-b border-border/40">
+          <form onSubmit={handleSearch} className="relative flex items-center">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                if (!e.target.value.trim()) {
+                  setSearchResult(null);
+                  setSearchError('');
+                }
+              }}
+              placeholder="Search username to add..."
+              className="w-full glass-input px-4 py-2.5 text-sm rounded-xl text-white placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-primary/50 border border-white/5 bg-slate-800/50 pr-10"
+            />
+            <button
+              type="submit"
+              disabled={!searchQuery.trim() || isSearching}
+              className="absolute right-3 p-1.5 text-muted-foreground hover:text-white transition-colors disabled:opacity-50"
+            >
+              {isSearching ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              )}
+            </button>
+          </form>
+        </div>
+
         <div className="flex-1 overflow-y-auto p-3 space-y-1 custom-scrollbar">
-          {loading ? (
+          {searchQuery.trim() ? (
+            <div className="pt-2">
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 px-2">Search Result</h3>
+              {searchError ? (
+                <div className="text-center text-red-400 text-sm p-4 bg-red-500/10 rounded-xl border border-red-500/20">{searchError}</div>
+              ) : searchResult ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="p-3 rounded-xl border border-white/10 bg-white/5 flex items-center justify-between"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm shadow-md">
+                      {searchResult.username.charAt(0).toUpperCase()}
+                    </div>
+                    <p className="font-medium text-white">{searchResult.username}</p>
+                  </div>
+
+                  {users.some(u => u._id === searchResult._id) ? (
+                    <span className="text-xs font-medium text-green-400 px-2.5 py-1 bg-green-500/10 rounded-md border border-green-500/20">Added</span>
+                  ) : (
+                    <button
+                      onClick={() => handleAddContact(searchResult._id)}
+                      className="text-xs font-semibold px-3 py-1.5 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md shadow-md shadow-primary/20 transition-all hover:scale-105 active:scale-95"
+                    >
+                      Add
+                    </button>
+                  )}
+                </motion.div>
+              ) : null}
+            </div>
+          ) : loading ? (
             <div className="flex items-center justify-center h-32">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : users.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm">
-              <p>No users found</p>
+            <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm opacity-80">
+              <svg className="w-8 h-8 mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+              </svg>
+              <p>No contacts yet. Search above to add.</p>
             </div>
           ) : (
-            users.map((user) => (
-              <motion.div
-                key={user._id}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => setSelectedUser(user)}
-                className={`p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-4 ${selectedUser?._id === user._id
+            <>
+              <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2 pt-2">Your Contacts</h3>
+              {users.map((user) => (
+                <motion.div
+                  key={user._id}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setSelectedUser(user)}
+                  className={`p-3 rounded-xl cursor-pointer transition-all duration-200 flex items-center gap-4 ${selectedUser?._id === user._id
                     ? 'bg-primary/15 border border-primary/20 shadow-sm'
                     : 'hover:bg-white/5 border border-transparent'
-                  }`}
-              >
-                <div className="relative">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner ${selectedUser?._id === user._id ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-slate-700'
-                    }`}>
-                    {user.username.charAt(0).toUpperCase()}
+                    }`}
+                >
+                  <div className="relative">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-inner ${selectedUser?._id === user._id ? 'bg-gradient-to-br from-blue-500 to-purple-600' : 'bg-slate-700'
+                      }`}>
+                      {user.username.charAt(0).toUpperCase()}
+                    </div>
+                    {user.isOnline && (
+                      <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
+                    )}
                   </div>
-                  {user.isOnline && (
-                    <span className="absolute bottom-0.5 right-0.5 w-3 h-3 bg-green-500 border-2 border-slate-900 rounded-full shadow-[0_0_8px_rgba(34,197,94,0.6)]"></span>
-                  )}
-                </div>
 
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium truncate ${selectedUser?._id === user._id ? 'text-white' : 'text-slate-200'}`}>
-                    {user.username}
-                  </p>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {user.isOnline ? 'Online' : 'Offline'}
-                  </p>
-                </div>
-              </motion.div>
-            ))
+                  <div className="flex-1 min-w-0">
+                    <p className={`font-medium truncate ${selectedUser?._id === user._id ? 'text-white' : 'text-slate-200'}`}>
+                      {user.username}
+                    </p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {user.isOnline ? 'Online' : 'Offline'}
+                    </p>
+                  </div>
+                </motion.div>
+              ))}
+            </>
           )}
         </div>
       </div>
@@ -241,8 +352,8 @@ function Chatpage() {
                       className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}
                     >
                       <div className={`max-w-[70%] px-5 py-3 rounded-2xl shadow-md backdrop-blur-sm ${isMe
-                          ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
-                          : 'bg-slate-800/80 border border-slate-700/50 text-slate-100 rounded-bl-sm'
+                        ? 'bg-gradient-to-br from-blue-600 to-indigo-600 text-white rounded-br-sm'
+                        : 'bg-slate-800/80 border border-slate-700/50 text-slate-100 rounded-bl-sm'
                         }`}>
                         <p className="leading-relaxed text-[15px]">{msg.content}</p>
                         <p className={`text-[10px] mt-1 text-right ${isMe ? 'text-blue-200' : 'text-slate-400'}`}>
@@ -300,7 +411,7 @@ function Chatpage() {
           </div>
         )}
       </div>
-    </div>
+    </div >
   );
 }
 

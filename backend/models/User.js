@@ -32,7 +32,11 @@ const userSchema = new mongoose.Schema({
     lastseen: {
         type: Date,
         Default: Date.now
-    }
+    },
+    contacts: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
+    }]
 },
     {
         timestamps: true
