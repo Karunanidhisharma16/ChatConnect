@@ -9,13 +9,29 @@ dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+// const io = new Server(server, {
+//   cors: {
+//     origin: 'http://localhost:5173',
+//     methods: ['GET', 'POST']
+//   }
+// });
+const allowedOrigins = [
+  "http://localhost:5173",
+  "https://convoshare.logicryx.in"
+];
+
 const io = new Server(server, {
   cors: {
-    origin: 'http://localhost:5173',
-    methods: ['GET', 'POST']
+    origin: allowedOrigins,
+    methods: ["GET","POST"],
+    credentials: true
   }
 });
 
+app.use(cors({
+  origin: allowedOrigins,
+  credentials: true
+}));
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -29,6 +45,10 @@ app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/messages', messageRoutes);
 
+
+app.get("/", (req, res) => {
+  res.send("ChatConnect API running 🚀");
+});
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', message: 'Server is running' });
 });
