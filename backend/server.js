@@ -17,7 +17,8 @@ const server = http.createServer(app);
 // });
 const allowedOrigins = [
   "http://localhost:5173",
-  "https://convoshare.logicryx.in"
+  "https://convoshare.logicryx.in",
+  "https://*.vercel.app"
 ];
 
 const io = new Server(server, {
