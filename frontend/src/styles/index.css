@@ -28,25 +28,26 @@
 
 @layer base {
   :root {
-    --background: 222.2 84% 4.9%;
+    --background: 230 40% 4%;
     --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
+    --card: 230 40% 6%;
     --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
+    --popover: 230 40% 6%;
     --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
+    --primary: 260 90% 65%;
+    /* Vibrant neon purple */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 230 30% 15%;
     --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
+    --muted: 230 30% 15%;
     --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
+    --accent: 260 80% 60%;
     --accent-foreground: 210 40% 98%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
+    --border: 230 30% 15%;
+    --input: 230 30% 15%;
+    --ring: 260 90% 65%;
     --radius: 0.5rem;
   }
 }
@@ -83,27 +84,27 @@
 
 /* Glassmorphism Utilities */
 @utility glass {
-  background: rgba(255, 255, 255, 0.05);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 @utility glass-card {
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  background: rgba(15, 20, 35, 0.5);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.05);
 }
 
 @utility glass-input {
-  background: rgba(15, 23, 42, 0.4);
-  backdrop-filter: blur(4px);
+  background: rgba(15, 20, 35, 0.3);
+  backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  transition: all 0.2s ease;
+  transition: all 0.3s ease;
 
   &:focus {
-    background: rgba(15, 23, 42, 0.6);
-    border-color: rgba(99, 102, 241, 0.5);
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
+    background: rgba(15, 20, 35, 0.6);
+    border-color: rgba(139, 92, 246, 0.6);
+    box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25);
   }
 }

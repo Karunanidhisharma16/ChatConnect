@@ -49,27 +49,27 @@ function Loginpage() {
         />
       </div>
 
-      <div className="container mx-auto flex h-screen items-center justify-center p-4 lg:p-0 relative z-10">
+      <div className="container mx-auto flex min-h-screen items-center justify-center p-4 lg:p-0 relative z-10 py-12 lg:py-0">
 
-        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-center">
 
           {/* Left Side: Branding */}
           <motion.div
             initial={{ x: -50, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
-            className="hidden lg:block space-y-8"
+            className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-6 lg:space-y-8 order-1 lg:order-1 pt-8 lg:pt-0"
           >
             <div className="space-y-4">
-              <h1 className="text-7xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight bg-gradient-to-r from-white to-white/60 bg-clip-text text-transparent">
                 ConvoShare
               </h1>
-              <p className="text-xl text-muted-foreground leading-relaxed max-w-md">
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground leading-relaxed max-w-md mx-auto lg:mx-0">
                 Experience the next generation of messaging. Real-time, secure, and beautifully designed for improved productivity.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4 pt-4">
+            <div className="grid grid-cols-2 gap-3 lg:gap-4 pt-2 lg:pt-4 mx-auto lg:mx-0 w-full max-w-xs lg:max-w-none justify-items-center lg:justify-items-start">
               {['Encrypt', 'Speed', 'Cloud', 'Design'].map((item, i) => (
                 <motion.div
                   key={item}
@@ -90,7 +90,7 @@ function Loginpage() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="w-full max-w-md mx-auto"
+            className="w-full max-w-md mx-auto order-2 lg:order-2"
           >
             <div className="glass-card rounded-3xl p-8 md:p-10 border border-white/5">
               <div className="text-center mb-8">
